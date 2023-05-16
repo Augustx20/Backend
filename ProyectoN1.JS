@@ -1,89 +1,80 @@
-class Product {
-  constructor(title, description, price, thumbnail, code, stock, id) {
-    this.title = title;
-    this.description = description;
-    this.price = price;
-    this.thumbnail = thumbnail;
-    this.code = code;
-    this.stock = stock;
-    this.id = id;
-  }
-}
-
+const fs = require('fs');
 
 class ProductManager {
-  constructor() {
-    this.products = [];
-    this.currentId = 1;
+  constructor(path) {
+    this.path = path;
   }
 
-  addProduct(title, description, price, thumbnail, code, stock) {
-    if (!title) {
-      throw new Error('Title is required.');
-    }
-    if (!description) {
-      throw new Error('Description is required.');
-    }
-    if (!thumbnail) {
-      throw new Error('Thumbnail is required.');
-    }
-    if (typeof price !== 'number' || price <= 0) {
-      throw new Error('Price must be a positive number.');
-    }
-    if (typeof stock !== 'number' || stock <= 0) {
-      throw new Error('Stock must be a positive number.');
-    }
-    if (this.getProductByCode(code)) {
-      throw new Error(`Product with code ${code} already exists.`);
-    }
-    const newProduct = new Product(title, description, price, thumbnail, code, stock, this.currentId++);
-    this.products.push(newProduct);
+  addProduct(product) {
+    const products = this.getProductsFromJSON();
+    const newProduct = {
+      id: this.generateId(products),
+      ...product
+    };
+    products.push(newProduct);
+    this.saveProductsToJSON(products);
     return newProduct;
   }
 
+  getProducts() {
+    return this.getProductsFromJSON();
+  }
+
   getProductById(id) {
-    const product = this.products.find((product) => product.id === id);
-    if (!product) {
-      throw new Error(`Product with id ${id} not found.`);
-    }
+    const products = this.getProductsFromJSON();
+    const product = products.find((product) => product.id === id);
     return product;
   }
 
-  getProductByCode(code) {
-    return this.products.find((product) => product.code === code);
+  updateProduct(id, updatedFields) {
+    const products = this.getProductsFromJSON();
+    const productIndex = products.findIndex((product) => product.id === id);
+    if (productIndex !== -1) {
+      const updatedProduct = {
+        ...products[productIndex],
+        ...updatedFields
+      };
+      products[productIndex] = updatedProduct;
+      this.saveProductsToJSON(products);
+      return updatedProduct;
+    }
+    return null;
   }
 
-  updateProduct(id, title, description, price, thumbnail, code, stock) {
-    const product = this.getProductById(id);
-    if (product.code !== code && this.getProductByCode(code)) {
-      throw new Error(`Product with code ${code} already exists.`);
-    }
-    product.title = title;
-    product.description = description;
-    product.price = price;
-    product.thumbnail = thumbnail;
-    product.code = code;
-    product.stock = stock;
-    return product;
-  }
   deleteProduct(id) {
-    const productIndex = this.products.findIndex((product) => product.id === id);
-    if (productIndex === -1) {
-      throw new Error(`Product with id ${id} not found.`);
+    const products = this.getProductsFromJSON();
+    const productIndex = products.findIndex((product) => product.id === id);
+    if (productIndex !== -1) {
+      const deletedProduct = products.splice(productIndex, 1)[0];
+      this.saveProductsToJSON(products);
+      return deletedProduct;
     }
-    const [deletedProduct] = this.products.splice(productIndex, 1);
-    return deletedProduct;
+    return null;
   }
 
-  getAllProducts() {
-    return this.products;
+  generateId(products) {
+    if (products.length === 0) {
+      return 1;
+    }
+    const lastProduct = products[products.length - 1];
+    return lastProduct.id + 1;
+  }
+
+  getProductsFromJSON() {
+    const fileData = fs.readFileSync(this.path, 'utf-8');
+    return JSON.parse(fileData);
+  }
+
+  saveProductsToJSON(products) {
+    const data = JSON.stringify(products, null, 2);
+    fs.writeFileSync(this.path, data, 'utf-8');
   }
 }
 
+// Ejemplo de uso:
 
-const productManager = new ProductManager();
+const productManager = new ProductManager('products.json');
 
-// Agregamos un nuevo producto
 const newProduct = {
   title: 'Nuevo producto',
   description: 'Descripción del nuevo producto',
@@ -93,6 +84,22 @@ const newProduct = {
   stock: 10
 };
 
-productManager.addProduct(newProduct.title, newProduct.description, newProduct.price, newProduct.thumbnail, newProduct.code, newProduct.stock);
+productManager.addProduct(newProduct);
 
-console.log(productManager.getAllProducts());
+const allProducts = productManager.getProducts();
+console.log(allProducts);
+
+const productId = 1;
+const product = productManager.getProductById(productId);
+console.log(product);
+
+const updatedFields = {
+  title: 'Producto actualizado',
+  price: 200
+};
+
+const updatedProduct = productManager.updateProduct(productId, updatedFields);
+console.log(updatedProduct);
+
+const deletedProduct = productManager.deleteProduct(productId);
+console.log(deletedProduct);
