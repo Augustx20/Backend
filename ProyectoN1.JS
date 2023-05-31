@@ -3,50 +3,51 @@ const fs = require('fs');
 class ProductManager {
   constructor(path) {
     this.path = path;
+    this.products = this.getProductsFromJSON(); // Agregamos la variable "products" como caché
   }
 
   addProduct(product) {
-    const products = this.getProductsFromJSON();
     const newProduct = {
-      id: this.generateId(products),
+      id: this.generateId(this.products),
       ...product
     };
-    products.push(newProduct);
-    this.saveProductsToJSON(products);
+    this.products.push(newProduct);
+    this.saveProductsToJSON();
     return newProduct;
   }
 
   getProducts() {
-    return this.getProductsFromJSON();
+    return this.products;
   }
 
   getProductById(id) {
-    const products = this.getProductsFromJSON();
-    const product = products.find((product) => product.id === id);
-    return product;
+    const product = this.products.find((product) => product.id === id);
+    return product || null; // Retornamos null si no se encuentra el producto
   }
 
   updateProduct(id, updatedFields) {
-    const products = this.getProductsFromJSON();
-    const productIndex = products.findIndex((product) => product.id === id);
+    const productIndex = this.products.findIndex((product) => product.id === id);
     if (productIndex !== -1) {
       const updatedProduct = {
-        ...products[productIndex],
+        ...this.products[productIndex],
         ...updatedFields
       };
-      products[productIndex] = updatedProduct;
-      this.saveProductsToJSON(products);
+      // Validamos que no se puedan agregar campos nuevos ni cambiar el id
+      if (Object.keys(updatedFields).length !== Object.keys(this.products[productIndex]).length || updatedFields.id !== id) {
+        throw new Error("No se pueden modificar ni agregar campos");
+      }
+      this.products[productIndex] = updatedProduct;
+      this.saveProductsToJSON();
       return updatedProduct;
     }
     return null;
   }
 
   deleteProduct(id) {
-    const products = this.getProductsFromJSON();
-    const productIndex = products.findIndex((product) => product.id === id);
+    const productIndex = this.products.findIndex((product) => product.id === id);
     if (productIndex !== -1) {
-      const deletedProduct = products.splice(productIndex, 1)[0];
-      this.saveProductsToJSON(products);
+      const deletedProduct = this.products.splice(productIndex, 1)[0];
+      this.saveProductsToJSON();
       return deletedProduct;
     }
     return null;
@@ -61,12 +62,17 @@ class ProductManager {
   }
 
   getProductsFromJSON() {
-    const fileData = fs.readFileSync(this.path, 'utf-8');
-    return JSON.parse(fileData);
+    try {
+      const fileData = fs.readFileSync(this.path, 'utf-8');
+      return JSON.parse(fileData);
+    } catch (error) {
+      // Si el archivo no existe, retornamos un array vacío
+      return [];
+    }
   }
 
-  saveProductsToJSON(products) {
-    const data = JSON.stringify(products, null, 2);
+  saveProductsToJSON() {
+    const data = JSON.stringify(this.products, null, 2);
     fs.writeFileSync(this.path, data, 'utf-8');
   }
 }
@@ -94,12 +100,17 @@ const product = productManager.getProductById(productId);
 console.log(product);
 
 const updatedFields = {
+  id: productId, // Agregamos el id para no cambiarlo
   title: 'Producto actualizado',
   price: 200
 };
 
-const updatedProduct = productManager.updateProduct(productId, updatedFields);
-console.log(updatedProduct);
+try {
+  const updatedProduct = productManager.updateProduct(productId, updatedFields);
+  console.log(updatedProduct);
+} catch (error) {
+  console.log(error.message);
+}
 
 const deletedProduct = productManager.deleteProduct(productId);
 console.log(deletedProduct);
