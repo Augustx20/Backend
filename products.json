@@ -16,5 +16,14 @@
     "thumbnail": "imagen_del_nuevo_producto.jpg",
     "code": "123456",
     "stock": 10
+  },
+  {
+    "id": 4,
+    "title": "Nuevo producto",
+    "description": "Descripción del nuevo producto",
+    "price": 100,
+    "thumbnail": "imagen_del_nuevo_producto.jpg",
+    "code": "123456",
+    "stock": 10
   }
 ]

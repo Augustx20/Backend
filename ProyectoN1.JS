@@ -7,6 +7,17 @@ class ProductManager {
   }
 
   addProduct(product) {
+    // Validación de campos incompletos
+    if (!product.title || !product.description || !product.price || !product.thumbnail || !product.code || !product.stock) {
+      throw new Error("Todos los campos son obligatorios");
+    }
+
+    // Validación de código duplicado
+    const duplicateProduct = this.products.find((p) => p.code === product.code);
+    if (duplicateProduct) {
+      throw new Error("Ya existe un producto con el mismo código");
+    }
+
     const newProduct = {
       id: this.generateId(this.products),
       ...product
@@ -32,15 +43,15 @@ class ProductManager {
         ...this.products[productIndex],
         ...updatedFields
       };
-      // Validamos que no se puedan agregar campos nuevos ni cambiar el id
-      if (Object.keys(updatedFields).length !== Object.keys(this.products[productIndex]).length || updatedFields.id !== id) {
-        throw new Error("No se pueden modificar ni agregar campos");
+      // Validamos que el campo 'id' no cambie
+      if ('id' in updatedFields && updatedFields.id !== id) {
+        throw new Error("No se puede cambiar el ID del producto");
       }
       this.products[productIndex] = updatedProduct;
       this.saveProductsToJSON();
       return updatedProduct;
     }
-    return null;
+    throw new Error("No se encontró el producto");
   }
 
   deleteProduct(id) {
@@ -50,7 +61,7 @@ class ProductManager {
       this.saveProductsToJSON();
       return deletedProduct;
     }
-    return null;
+    throw new Error("No se encontró el producto");
   }
 
   generateId(products) {
@@ -90,7 +101,12 @@ const newProduct = {
   stock: 10
 };
 
-productManager.addProduct(newProduct);
+try {
+  productManager.addProduct(newProduct);
+  console.log("Producto agregado exitosamente");
+} catch (error) {
+  console.log("Error al agregar el producto:", error.message);
+}
 
 const allProducts = productManager.getProducts();
 console.log(allProducts);
@@ -109,8 +125,12 @@ try {
   const updatedProduct = productManager.updateProduct(productId, updatedFields);
   console.log(updatedProduct);
 } catch (error) {
-  console.log(error.message);
+  console.log("Error al actualizar el producto:", error.message);
 }
 
-const deletedProduct = productManager.deleteProduct(productId);
-console.log(deletedProduct);
+try {
+  const deletedProduct = productManager.deleteProduct(productId);
+  console.log("Producto eliminado exitosamente:", deletedProduct);
+} catch (error) {
+  console.log("Error al eliminar el producto:", error.message);
+}
