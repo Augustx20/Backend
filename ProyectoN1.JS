@@ -3,20 +3,11 @@ const fs = require('fs');
 class ProductManager {
   constructor(path) {
     this.path = path;
-    this.products = this.getProductsFromJSON(); // Agregamos la variable "products" como caché
+    this.products = this.getProductsFromJSON();
   }
 
   addProduct(product) {
-    // Validación de campos incompletos
-    if (!product.title || !product.description || !product.price || !product.thumbnail || !product.code || !product.stock) {
-      throw new Error("Todos los campos son obligatorios");
-    }
-
-    // Validación de código duplicado
-    const duplicateProduct = this.products.find((p) => p.code === product.code);
-    if (duplicateProduct) {
-      throw new Error("Ya existe un producto con el mismo código");
-    }
+    this.validateProduct(product); // Validación del producto
 
     const newProduct = {
       id: this.generateId(this.products),
@@ -27,13 +18,24 @@ class ProductManager {
     return newProduct;
   }
 
+  validateProduct(product) {
+    if (!product.title || !product.description || !product.price || !product.thumbnail || !product.code || !product.stock) {
+      throw new Error("Todos los campos son obligatorios");
+    }
+
+    const duplicateProduct = this.products.find((p) => p.code === product.code);
+    if (duplicateProduct) {
+      throw new Error("Ya existe un producto con el mismo código");
+    }
+  }
+
   getProducts() {
     return this.products;
   }
 
   getProductById(id) {
     const product = this.products.find((product) => product.id === id);
-    return product || null; // Retornamos null si no se encuentra el producto
+    return product || null;
   }
 
   updateProduct(id, updatedFields) {
@@ -43,10 +45,11 @@ class ProductManager {
         ...this.products[productIndex],
         ...updatedFields
       };
-      // Validamos que el campo 'id' no cambie
+
       if ('id' in updatedFields && updatedFields.id !== id) {
         throw new Error("No se puede cambiar el ID del producto");
       }
+
       this.products[productIndex] = updatedProduct;
       this.saveProductsToJSON();
       return updatedProduct;
@@ -77,14 +80,18 @@ class ProductManager {
       const fileData = fs.readFileSync(this.path, 'utf-8');
       return JSON.parse(fileData);
     } catch (error) {
-      // Si el archivo no existe, retornamos un array vacío
+      fs.writeFileSync(this.path, '[]', 'utf-8');
       return [];
     }
   }
 
   saveProductsToJSON() {
-    const data = JSON.stringify(this.products, null, 2);
-    fs.writeFileSync(this.path, data, 'utf-8');
+    try {
+      const data = JSON.stringify(this.products, null, 2);
+      fs.writeFileSync(this.path, data, 'utf-8');
+    } catch (error) {
+      throw new Error("Error al guardar los productos en el archivo JSON");
+    }
   }
 }
 
@@ -116,7 +123,7 @@ const product = productManager.getProductById(productId);
 console.log(product);
 
 const updatedFields = {
-  id: productId, // Agregamos el id para no cambiarlo
+  id: productId,
   title: 'Producto actualizado',
   price: 200
 };
